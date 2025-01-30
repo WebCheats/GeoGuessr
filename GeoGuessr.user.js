@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheatGuessr | GeoGuessr Cheat
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Extremely customizable GeoGuessr cheating client. Click 3 to open the settings menu.
 // @author       CheatGuessr
 // @match        https://www.geoguessr.com/*
@@ -34,6 +34,119 @@ const DEFAULT_SETTINGS = {
     },
     blockAds: true
 };
+
+const style = document.createElement('style');
+    style.textContent = `
+        .google-maps-iframe {
+            position: fixed;
+            z-index: 9999;
+            border: 2px solid #333;
+            border-radius: 4px;
+        }
+        .close-button {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            width: 30px;
+            height: 30px;
+            background: red;
+            border: 2px solid white;
+            border-radius: 50%;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10000;
+        }
+        .loading-indicator {
+            position: fixed;
+            left: 10px;
+            padding: 5px 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 4px;
+            z-index: 9999;
+        }
+        .settings-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1f2937;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 10001;
+            width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: white;
+        }
+        .settings-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 10000;
+        }
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .settings-section {
+            background: #374151;
+            padding: 15px;
+            border-radius: 6px;
+        }
+        .settings-row {
+            margin: 10px 0;
+        }
+        .settings-row label {
+            display: block;
+            margin-bottom: 5px;
+            color: #e5e7eb;
+        }
+        .settings-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #4b5563;
+            border-radius: 4px;
+            background: #1f2937;
+            color: white;
+        }
+        .settings-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            background: #3b82f6;
+            color: white;
+        }
+        .settings-button:hover {
+            background: #2563eb;
+        }
+    `;
+    document.head.appendChild(style);
+
+let settings = null;
+
+function loadSettings() {
+    try {
+        const saved = localStorage.getItem('geoGuessrHelper');
+        settings = saved ? JSON.parse(saved) : DEFAULT_SETTINGS;
+    } catch (e) {
+        settings = DEFAULT_SETTINGS;
+    }
+}
+
+function saveSettings() {
+    localStorage.setItem('geoGuessrHelper', JSON.stringify(settings));
+}
 
 var originalOpen = XMLHttpRequest.prototype.open;
 XMLHttpRequest.prototype.open = function(method, url) {
@@ -307,38 +420,30 @@ function updateMapPosition() {
     googleMapsIframe.style.height = settings.mapSize.height + 'px';
 }
 
-let onKeyDown = (e) => {
-    switch (e.key) {
-        case settings.keybinds.toggleMap:
-            e.stopImmediatePropagation();
-            toggleGoogleMapsIframe(globalCoordinates);
-            break;
-        case settings.keybinds.newTab:
-            e.stopImmediatePropagation();
-            mapsFromCoords();
-            break;
-        case settings.keybinds.settings:
-            e.stopImmediatePropagation();
-            toggleSettingsModal();
-            break;
-        case settings.keybinds.detailedLocation:
-            e.stopImmediatePropagation();
-            const { lat, lng } = globalCoordinates;
-            if (!lat || !lng) {
-                alert('Coordinates not yet available!');
-            } else {
-                fetchLocationDetails(lat, lng);
-            }
-            break;
-        case settings.keybinds.pinpoint:
-            e.stopImmediatePropagation();
-            placeMarker(true);
-            break;
-        case settings.keybinds.nearbypinpoint:
-            e.stopImmediatePropagation();
-            placeMarker(false);
-            break;
-    }
-};
+document.addEventListener("keydown", function(event) {
+    event.stopPropagation();
 
-document.addEventListener("keydown", onKeyDown);
+    const location = globalCoordinates;
+    if (!location) return;
+
+    if (event.key === settings.keybinds.toggleMap) {
+        toggleGoogleMapsIframe(location);
+    } else if (event.key === settings.keybinds.newTab) {
+        mapsFromCoords();
+    } else if (event.key === settings.keybinds.settings) {
+        toggleSettingsModal();
+    } else if (event.key === settings.keybinds.detailedLocation) {
+        const { lat, lng } = location;
+        if (!lat || !lng) {
+            alert('Coordinates not yet available!');
+        } else {
+            fetchLocationDetails(lat, lng);
+        }
+    } else if (event.key === settings.keybinds.pinpoint) {
+        placeMarker(true);
+    } else if (event.key === settings.keybinds.nearbypinpoint) {
+        placeMarker(false);
+    }
+}, true);
+
+loadSettings();
