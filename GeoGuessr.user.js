@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         CheatGuessr | GeoGuessr Cheat
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.0
 // @description  Extremely customizable GeoGuessr cheating client. Click 3 to open the settings menu.
 // @author       CheatGuessr
 // @match        https://www.geoguessr.com/*
